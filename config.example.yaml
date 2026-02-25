@@ -1,0 +1,18 @@
+sources:
+  - saramin
+
+http:
+  timeout_sec: 15
+  retry_count: 2
+  retry_backoff_ms: 300
+  rate_limit_per_sec: 2
+
+storage:
+  sqlite_path: ./jobs.db
+
+queries:
+  - name: backend-go
+    keywords: ["go", "backend"]
+    locations: ["서울"]
+    experience_levels: ["주니어", "미들"]
+    page_limit: 2
