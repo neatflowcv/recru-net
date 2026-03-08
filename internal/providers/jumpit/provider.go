@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -42,16 +43,39 @@ func NewProviderWithBaseURL(baseURL string, httpClient *http.Client) *Provider {
 }
 
 func (p *Provider) ListPositions(ctx context.Context) ([]*domain.Position, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL+"/api/positions", nil)
+	positions := make([]*domain.Position, 0)
+
+	for page := 1; ; page++ {
+		pagePositions, totalCount, err := p.listPositionsPage(ctx, page)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(pagePositions) == 0 {
+			break
+		}
+
+		positions = append(positions, pagePositions...)
+
+		if totalCount > 0 && len(positions) >= totalCount {
+			break
+		}
+	}
+
+	return positions, nil
+}
+
+func (p *Provider) listPositionsPage(ctx context.Context, page int) ([]*domain.Position, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.positionsURL(page), nil)
 	if err != nil {
-		return nil, fmt.Errorf("build jumpit request: %w", err)
+		return nil, 0, fmt.Errorf("build jumpit request: %w", err)
 	}
 
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("request jumpit positions: %w", err)
+		return nil, 0, fmt.Errorf("request jumpit positions: %w", err)
 	}
 
 	defer func() {
@@ -59,14 +83,14 @@ func (p *Provider) ListPositions(ctx context.Context) ([]*domain.Position, error
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
+		return nil, 0, fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
 	}
 
 	var payload listPositionsResponse
 
 	err = json.NewDecoder(resp.Body).Decode(&payload)
 	if err != nil {
-		return nil, fmt.Errorf("decode jumpit positions: %w", err)
+		return nil, 0, fmt.Errorf("decode jumpit positions: %w", err)
 	}
 
 	positions := make([]*domain.Position, 0, len(payload.Result.Positions))
@@ -74,18 +98,33 @@ func (p *Provider) ListPositions(ctx context.Context) ([]*domain.Position, error
 	for _, item := range payload.Result.Positions {
 		position, err := item.toDomainPosition()
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		positions = append(positions, position)
 	}
 
-	return positions, nil
+	return positions, payload.Result.TotalCount, nil
+}
+
+func (p *Provider) positionsURL(page int) string {
+	positionsURL := p.baseURL + "/api/positions"
+	if page < 1 {
+		return positionsURL
+	}
+
+	query := url.Values{}
+	query.Set("sort", "reg_dt")
+	query.Set("page", strconv.Itoa(page))
+
+	return positionsURL + "?" + query.Encode()
 }
 
 type listPositionsResponse struct {
 	Result struct {
-		Positions []positionDTO `json:"positions"`
+		TotalCount int           `json:"totalCount"`
+		Page       int           `json:"page"`
+		Positions  []positionDTO `json:"positions"`
 	} `json:"result"`
 }
 
