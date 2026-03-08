@@ -24,6 +24,7 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		kong.Name("recru"),
 		kong.Description("Recruitment scraper CLI."),
 		kong.Writers(stdout, stderr),
+		kong.BindTo(stdout, (*io.Writer)(nil)),
 	)
 	if err != nil {
 		return fmt.Errorf("build CLI: %w", err)
@@ -34,14 +35,7 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 
-	switch ctx.Command() {
-	case "sync":
-		return root.Sync.Run(stdout)
-	case "list":
-		return root.List.Run(stdout)
-	default:
-		return fmt.Errorf("unknown command: %s", ctx.Command())
-	}
+	return ctx.Run()
 }
 
 func (c syncCmd) Run(stdout io.Writer) error {
