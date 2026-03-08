@@ -14,6 +14,7 @@ import (
 )
 
 const defaultBaseURL = "https://jumpit-api.saramin.co.kr"
+const defaultHTTPTimeout = 15 * time.Second
 
 var errUnexpectedStatus = errors.New("unexpected jumpit status")
 
@@ -28,8 +29,9 @@ func NewProvider(httpClient *http.Client) *Provider {
 
 func NewProviderWithBaseURL(baseURL string, httpClient *http.Client) *Provider {
 	if httpClient == nil {
+		//nolint:exhaustruct
 		httpClient = &http.Client{
-			Timeout: 15 * time.Second,
+			Timeout: defaultHTTPTimeout,
 		}
 	}
 
@@ -51,6 +53,7 @@ func (p *Provider) ListPositions(ctx context.Context) ([]*domain.Position, error
 	if err != nil {
 		return nil, fmt.Errorf("request jumpit positions: %w", err)
 	}
+
 	defer func() {
 		_ = resp.Body.Close()
 	}()
@@ -60,6 +63,7 @@ func (p *Provider) ListPositions(ctx context.Context) ([]*domain.Position, error
 	}
 
 	var payload listPositionsResponse
+
 	err = json.NewDecoder(resp.Body).Decode(&payload)
 	if err != nil {
 		return nil, fmt.Errorf("decode jumpit positions: %w", err)

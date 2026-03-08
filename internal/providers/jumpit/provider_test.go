@@ -17,7 +17,11 @@ func TestProviderListPositions(t *testing.T) {
 
 	// Arrange
 	server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/positions", r.URL.Path)
+		if r.URL.Path != "/api/positions" {
+			responseWriter.WriteHeader(http.StatusBadRequest)
+
+			return
+		}
 
 		responseWriter.Header().Set("Content-Type", "application/json")
 		_, _ = responseWriter.Write([]byte(`{
@@ -64,6 +68,7 @@ func assertPosition(t *testing.T, got *domain.Position) {
 	require.Equal(t, 3, *got.Career.MaxYears)
 
 	wantClose, _ := time.Parse("2006-01-02T15:04:05", "2026-03-11T23:59:59")
+
 	require.NotNil(t, got.ClosesAt)
 	require.True(t, got.ClosesAt.Equal(wantClose))
 }

@@ -1,3 +1,4 @@
+//nolint:testpackage
 package cli
 
 import (
@@ -10,35 +11,64 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:paralleltest
 func TestRunSync(t *testing.T) {
 	// Arrange
-	newSyncService = func() *flow.Service {
+	newSyncService = func() (*flow.Service, string, error) {
 		return flow.NewService(stubPositionProvider{
 			positions: []*domain.Position{
 				{Title: "Platform Engineer"},
 				{Title: "Backend Engineer"},
 			},
-		})
+			err: nil,
+		}, stubPositionRepository{err: nil}), defaultDatabaseURL, nil
 	}
+
 	t.Cleanup(func() {
 		newSyncService = defaultNewSyncService
 	})
 
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
 
 	// Act
 	err := Run([]string{"sync"}, &stdout, &stderr)
 
 	// Assert
 	require.NoError(t, err)
+	require.Contains(t, stdout.String(), "using DATABASE_URL="+defaultDatabaseURL)
 	require.Contains(t, stdout.String(), "synced 2 positions from jumpit")
 }
 
+//nolint:paralleltest
+func TestRunSyncReturnsServiceBuildError(t *testing.T) {
+	newSyncService = func() (*flow.Service, string, error) {
+		return nil, "", context.DeadlineExceeded
+	}
+
+	t.Cleanup(func() {
+		newSyncService = defaultNewSyncService
+	})
+
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
+
+	err := Run([]string{"sync"}, &stdout, &stderr)
+
+	require.EqualError(t, err, "run CLI command: build sync service: context deadline exceeded")
+}
+
+//nolint:paralleltest
 func TestRunList(t *testing.T) {
 	// Arrange
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
 
 	// Act
 	err := Run([]string{"list"}, &stdout, &stderr)
@@ -50,10 +80,13 @@ func TestRunList(t *testing.T) {
 	require.Contains(t, got, "Backend Engineer")
 }
 
+//nolint:paralleltest
 func TestRunUnknownCommand(t *testing.T) {
 	// Arrange
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
+	var (
+		stdout bytes.Buffer
+		stderr bytes.Buffer
+	)
 
 	// Act
 	err := Run([]string{"unknown"}, &stdout, &stderr)
@@ -69,4 +102,12 @@ type stubPositionProvider struct {
 
 func (s stubPositionProvider) ListPositions(_ context.Context) ([]*domain.Position, error) {
 	return s.positions, s.err
+}
+
+type stubPositionRepository struct {
+	err error
+}
+
+func (s stubPositionRepository) UpsertPositions(_ context.Context, _ []*domain.Position) error {
+	return s.err
 }

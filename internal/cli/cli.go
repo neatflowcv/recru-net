@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/alecthomas/kong"
 	"github.com/neatflowcv/recru-net/internal/app/flow"
 	"github.com/neatflowcv/recru-net/internal/providers/jumpit"
+	pgstore "github.com/neatflowcv/recru-net/internal/repositories/postgres"
 )
 
 type CLI struct {
@@ -19,15 +21,29 @@ type syncCmd struct{}
 
 type listCmd struct{}
 
-func defaultNewSyncService() *flow.Service {
-	return flow.NewService(jumpit.NewProvider(nil))
+const databaseURLEnv = "DATABASE_URL"
+const defaultDatabaseURL = "postgres://recur:recur@localhost:5432/recur?sslmode=disable"
+
+func defaultNewSyncService() (*flow.Service, string, error) {
+	databaseURL := os.Getenv(databaseURLEnv)
+	if databaseURL == "" {
+		databaseURL = defaultDatabaseURL
+	}
+
+	positionRepository, err := pgstore.NewPositionRepository(databaseURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("create position repository: %w", err)
+	}
+
+	return flow.NewService(jumpit.NewProvider(nil), positionRepository), databaseURL, nil
 }
 
+//nolint:gochecknoglobals
 var newSyncService = defaultNewSyncService
 
 func Run(args []string, stdout, stderr io.Writer) error {
+	//nolint:exhaustruct
 	root := &CLI{}
-	syncService := newSyncService()
 
 	parser, err := kong.New(
 		root,
@@ -35,7 +51,6 @@ func Run(args []string, stdout, stderr io.Writer) error {
 		kong.Description("Recruitment scraper CLI."),
 		kong.Writers(stdout, stderr),
 		kong.BindTo(stdout, (*io.Writer)(nil)),
-		kong.Bind(syncService),
 	)
 	if err != nil {
 		return fmt.Errorf("build CLI: %w", err)
@@ -54,7 +69,17 @@ func Run(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
-func (c syncCmd) Run(service *flow.Service, stdout io.Writer) error {
+func (c syncCmd) Run(stdout io.Writer) error {
+	service, databaseURL, err := newSyncService()
+	if err != nil {
+		return fmt.Errorf("build sync service: %w", err)
+	}
+
+	_, err = fmt.Fprintf(stdout, "using DATABASE_URL=%s\n", databaseURL)
+	if err != nil {
+		return fmt.Errorf("write database url: %w", err)
+	}
+
 	return runSync(service, stdout)
 }
 
