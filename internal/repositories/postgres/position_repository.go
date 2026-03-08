@@ -106,7 +106,6 @@ func (positionRecord) TableName() string {
 }
 
 func newPositionRecord(position *domain.Position) positionRecord {
-
 	return positionRecord{
 		ID:               buildPositionID(position),
 		Source:           string(position.Source),
