@@ -61,9 +61,7 @@ func TestServiceSyncUpsertsPositions(t *testing.T) {
 		positions: nil,
 		err:       nil,
 	}
-	service, err := flow.NewService(provider, repository)
-
-	require.NoError(t, err)
+	service := newTestService(t, provider, repository)
 
 	// Act
 	positions, err := service.Sync(context.Background())
@@ -86,12 +84,10 @@ func TestServiceSyncReturnsRepositoryError(t *testing.T) {
 		positions: nil,
 		err:       errWriteFailed,
 	}
-	service, err := flow.NewService(provider, &repository)
-
-	require.NoError(t, err)
+	service := newTestService(t, provider, &repository)
 
 	// Act
-	_, err = service.Sync(context.Background())
+	_, err := service.Sync(context.Background())
 
 	// Assert
 	require.EqualError(t, err, "upsert positions: write failed")
@@ -100,6 +96,19 @@ func TestServiceSyncReturnsRepositoryError(t *testing.T) {
 type stubPositionProvider struct {
 	positions []*domain.Position
 	err       error
+}
+
+func newTestService(
+	t *testing.T,
+	provider domain.PositionProvider,
+	repository domain.PositionRepository,
+) *flow.Service {
+	t.Helper()
+
+	service, err := flow.NewService(provider, repository)
+	require.NoError(t, err)
+
+	return service
 }
 
 func (s stubPositionProvider) ListPositions(_ context.Context) ([]*domain.Position, error) {
