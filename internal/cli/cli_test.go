@@ -2,55 +2,71 @@ package cli
 
 import (
 	"bytes"
-	"strings"
+	"context"
 	"testing"
+
+	"github.com/neatflowcv/recru-net/internal/app/flow"
+	"github.com/neatflowcv/recru-net/internal/domain"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunSync(t *testing.T) {
-	var (
-		stdout bytes.Buffer
-		stderr bytes.Buffer
-	)
+	// Arrange
+	newSyncService = func() *flow.Service {
+		return flow.NewService(stubPositionProvider{
+			positions: []*domain.Position{
+				{Title: "Platform Engineer"},
+				{Title: "Backend Engineer"},
+			},
+		})
+	}
+	t.Cleanup(func() {
+		newSyncService = defaultNewSyncService
+	})
 
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	// Act
 	err := Run([]string{"sync"}, &stdout, &stderr)
-	if err != nil {
-		t.Fatalf("Run returned error: %v", err)
-	}
 
-	if got := stdout.String(); !strings.Contains(got, "sync stub: not wired yet") {
-		t.Fatalf("stdout = %q, want sync stub message", got)
-	}
+	// Assert
+	require.NoError(t, err)
+	require.Contains(t, stdout.String(), "synced 2 positions from jumpit")
 }
 
 func TestRunList(t *testing.T) {
-	var (
-		stdout bytes.Buffer
-		stderr bytes.Buffer
-	)
+	// Arrange
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
+	// Act
 	err := Run([]string{"list"}, &stdout, &stderr)
-	if err != nil {
-		t.Fatalf("Run returned error: %v", err)
-	}
-
 	got := stdout.String()
-	if !strings.Contains(got, "SOURCE   COMPANY      TITLE") {
-		t.Fatalf("stdout = %q, want table header", got)
-	}
 
-	if !strings.Contains(got, "Backend Engineer") {
-		t.Fatalf("stdout = %q, want sample row", got)
-	}
+	// Assert
+	require.NoError(t, err)
+	require.Contains(t, got, "SOURCE   COMPANY      TITLE")
+	require.Contains(t, got, "Backend Engineer")
 }
 
 func TestRunUnknownCommand(t *testing.T) {
-	var (
-		stdout bytes.Buffer
-		stderr bytes.Buffer
-	)
+	// Arrange
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 
+	// Act
 	err := Run([]string{"unknown"}, &stdout, &stderr)
-	if err == nil {
-		t.Fatal("Run returned nil error, want parse error")
-	}
+
+	// Assert
+	require.Error(t, err)
+}
+
+type stubPositionProvider struct {
+	positions []*domain.Position
+	err       error
+}
+
+func (s stubPositionProvider) ListPositions(_ context.Context) ([]*domain.Position, error) {
+	return s.positions, s.err
 }
