@@ -70,6 +70,57 @@ func TestPositionRepositoryUpsertPositions(t *testing.T) {
 }
 
 //nolint:paralleltest
+func TestPositionRepositoryUpsertPositionsDedupesConflictingEntriesInSingleBatch(t *testing.T) {
+	repository := newTestRepository(t)
+
+	ctx := context.Background()
+
+	first := &domain.Position{
+		ID:            "jumpit-1",
+		Source:        domain.PositionSourceJumpit,
+		ExternalID:    "1",
+		Title:         "Platform Engineer",
+		CompanyName:   "Example Labs",
+		JobCategories: []string{"Backend"},
+		TechStacks:    []string{"Go"},
+		Locations:     []string{"Seoul"},
+		Career: domain.CareerRange{
+			MinYears:   intPtr(1),
+			MaxYears:   intPtr(3),
+			EntryLevel: false,
+		},
+		ClosesAt: nil,
+	}
+
+	second := &domain.Position{
+		ID:            "jumpit-1",
+		Source:        domain.PositionSourceJumpit,
+		ExternalID:    "1",
+		Title:         "Senior Platform Engineer",
+		CompanyName:   "Example Labs",
+		JobCategories: []string{"Platform"},
+		TechStacks:    []string{"Go", "PostgreSQL"},
+		Locations:     []string{"Seoul", "Remote"},
+		Career: domain.CareerRange{
+			MinYears:   intPtr(4),
+			MaxYears:   intPtr(8),
+			EntryLevel: false,
+		},
+		ClosesAt: nil,
+	}
+
+	require.NoError(t, repository.UpsertPositions(ctx, []*domain.Position{first, second}))
+
+	records, err := gorm.G[positionRecord](repository.db).
+		Where("source = ? AND external_id = ?", string(domain.PositionSourceJumpit), "1").
+		Find(ctx)
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	require.Equal(t, "Senior Platform Engineer", records[0].Title)
+	require.Equal(t, []string{"Go", "PostgreSQL"}, []string(records[0].TechStacks))
+}
+
+//nolint:paralleltest
 func TestPositionRepositoryUpsertPositionsRejectsNilEntry(t *testing.T) {
 	repository := newTestRepository(t)
 

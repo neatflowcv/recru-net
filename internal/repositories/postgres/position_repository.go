@@ -14,6 +14,7 @@ import (
 )
 
 const positionBatchSize = 100
+const minimumPositionsForDeduplication = 2
 
 var errPositionNil = errors.New("position is nil")
 
@@ -43,8 +44,9 @@ func (r *PositionRepository) UpsertPositions(ctx context.Context, positions []*d
 	}
 
 	records := make([]positionRecord, 0, len(positions))
+	dedupedPositions := dedupePositionsBySourceExternalID(positions)
 
-	for index, position := range positions {
+	for index, position := range dedupedPositions {
 		if position == nil {
 			return fmt.Errorf("%w: index %d", errPositionNil, index)
 		}
@@ -82,6 +84,40 @@ func (r *PositionRepository) UpsertPositions(ctx context.Context, positions []*d
 	}
 
 	return nil
+}
+
+func dedupePositionsBySourceExternalID(positions []*domain.Position) []*domain.Position {
+	if len(positions) < minimumPositionsForDeduplication {
+		return positions
+	}
+
+	lastIndexByKey := make(map[string]int, len(positions))
+
+	for index, position := range positions {
+		if position == nil {
+			continue
+		}
+
+		lastIndexByKey[positionKey(position)] = index
+	}
+
+	deduped := make([]*domain.Position, 0, len(lastIndexByKey))
+
+	for index, position := range positions {
+		if position == nil {
+			deduped = append(deduped, nil)
+
+			continue
+		}
+
+		if lastIndexByKey[positionKey(position)] != index {
+			continue
+		}
+
+		deduped = append(deduped, position)
+	}
+
+	return deduped
 }
 
 type positionRecord struct {
@@ -129,6 +165,10 @@ func buildPositionID(position *domain.Position) string {
 		return position.ID
 	}
 
+	return fmt.Sprintf("%s:%s", position.Source, position.ExternalID)
+}
+
+func positionKey(position *domain.Position) string {
 	return fmt.Sprintf("%s:%s", position.Source, position.ExternalID)
 }
 
