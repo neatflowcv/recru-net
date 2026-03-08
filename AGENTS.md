@@ -2,6 +2,8 @@
 
 이 문서는 `/home/biosvos/workspace/recru-net`의 디렉토리 구조만 정리합니다.
 
+작업이 완료되면 `paplay /usr/share/sounds/freedesktop/stereo/complete.oga`를 실행합니다.
+
 ## Root
 
 - `cmd/`: 실행 바이너리 진입점
