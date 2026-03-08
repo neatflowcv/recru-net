@@ -15,11 +15,16 @@ var errWriteFailed = errors.New("write failed")
 func TestServiceSyncRequiresProvider(t *testing.T) {
 	t.Parallel()
 
-	service, err := flow.NewService(nil, &stubPositionRepository{
+	// Arrange
+	repository := &stubPositionRepository{
 		positions: nil,
 		err:       nil,
-	})
+	}
 
+	// Act
+	service, err := flow.NewService(nil, repository)
+
+	// Assert
 	require.EqualError(t, err, "position provider is nil")
 	require.Nil(t, service)
 }
@@ -27,11 +32,16 @@ func TestServiceSyncRequiresProvider(t *testing.T) {
 func TestServiceSyncRequiresRepository(t *testing.T) {
 	t.Parallel()
 
-	service, err := flow.NewService(stubPositionProvider{
+	// Arrange
+	provider := stubPositionProvider{
 		positions: nil,
 		err:       nil,
-	}, nil)
+	}
 
+	// Act
+	service, err := flow.NewService(provider, nil)
+
+	// Assert
 	require.EqualError(t, err, "position repository is nil")
 	require.Nil(t, service)
 }
@@ -39,6 +49,7 @@ func TestServiceSyncRequiresRepository(t *testing.T) {
 func TestServiceSyncUpsertsPositions(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	provider := stubPositionProvider{
 		positions: []*domain.Position{
 			{Title: "Platform Engineer"},
@@ -53,7 +64,11 @@ func TestServiceSyncUpsertsPositions(t *testing.T) {
 	service, err := flow.NewService(provider, repository)
 
 	require.NoError(t, err)
+
+	// Act
 	positions, err := service.Sync(context.Background())
+
+	// Assert
 	require.NoError(t, err)
 	require.Len(t, positions, 2)
 	require.Equal(t, positions, repository.positions)
@@ -62,17 +77,23 @@ func TestServiceSyncUpsertsPositions(t *testing.T) {
 func TestServiceSyncReturnsRepositoryError(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
+	provider := stubPositionProvider{
+		positions: nil,
+		err:       nil,
+	}
 	repository := stubPositionRepository{
 		positions: nil,
 		err:       errWriteFailed,
 	}
-	service, err := flow.NewService(stubPositionProvider{
-		positions: nil,
-		err:       nil,
-	}, &repository)
+	service, err := flow.NewService(provider, &repository)
 
 	require.NoError(t, err)
+
+	// Act
 	_, err = service.Sync(context.Background())
+
+	// Assert
 	require.EqualError(t, err, "upsert positions: write failed")
 }
 
