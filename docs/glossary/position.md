@@ -5,6 +5,7 @@
 혼란 방지를 위해 다른 표현은 표준 용어로 사용하지 않는다.
 
 금지 표현:
+
 - `job posting`
 - `job listing`
 - `job`

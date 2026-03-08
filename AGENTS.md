@@ -3,7 +3,10 @@
 이 문서는 `/home/biosvos/workspace/recru-net`의 디렉토리 구조만 정리합니다.
 
 완료 사운드는 모든 작업이 실제로 끝난 뒤에만 실행합니다.
-구체적으로는 편집, 테스트, 검토, 추가 수정이 모두 끝나고 더 이상의 tool 호출이 필요 없는 상태에서 최종 응답을 보내기 직전에 `paplay /usr/share/sounds/freedesktop/stereo/complete.oga`를 정확히 한 번만 실행합니다.
+구체적으로는 편집, 테스트, 검토, 추가 수정이 모두 끝나고 더 이상의
+tool 호출이 필요 없는 상태에서 최종 응답을 보내기 직전에
+`paplay /usr/share/sounds/freedesktop/stereo/complete.oga`를 정확히 한 번만
+실행합니다.
 중간 진행 상황 공유, 부분 완료, 개별 테스트 통과 직후, 병렬 작업 중, 최종 응답 전에 남은 확인 작업이 있는 상태에서는 실행하지 않습니다.
 
 ## Root
