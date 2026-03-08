@@ -1,11 +1,11 @@
-//nolint:testpackage
-package flow
+package flow_test
 
 import (
 	"context"
 	"errors"
 	"testing"
 
+	"github.com/neatflowcv/recru-net/internal/app/flow"
 	"github.com/neatflowcv/recru-net/internal/domain"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ var errWriteFailed = errors.New("write failed")
 func TestServiceSyncRequiresProvider(t *testing.T) {
 	t.Parallel()
 
-	service, err := NewService(nil, &stubPositionRepository{
+	service, err := flow.NewService(nil, &stubPositionRepository{
 		positions: nil,
 		err:       nil,
 	})
@@ -27,7 +27,7 @@ func TestServiceSyncRequiresProvider(t *testing.T) {
 func TestServiceSyncRequiresRepository(t *testing.T) {
 	t.Parallel()
 
-	service, err := NewService(stubPositionProvider{
+	service, err := flow.NewService(stubPositionProvider{
 		positions: nil,
 		err:       nil,
 	}, nil)
@@ -50,7 +50,7 @@ func TestServiceSyncUpsertsPositions(t *testing.T) {
 		positions: nil,
 		err:       nil,
 	}
-	service, err := NewService(provider, repository)
+	service, err := flow.NewService(provider, repository)
 
 	require.NoError(t, err)
 	positions, err := service.Sync(context.Background())
@@ -66,7 +66,7 @@ func TestServiceSyncReturnsRepositoryError(t *testing.T) {
 		positions: nil,
 		err:       errWriteFailed,
 	}
-	service, err := NewService(stubPositionProvider{
+	service, err := flow.NewService(stubPositionProvider{
 		positions: nil,
 		err:       nil,
 	}, &repository)
