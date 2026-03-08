@@ -22,6 +22,8 @@ type syncCmd struct{}
 type listCmd struct{}
 
 const databaseURLEnv = "DATABASE_URL"
+
+//nolint:gosec // Local development default DSN.
 const defaultDatabaseURL = "postgres://recur:recur@localhost:5432/recur?sslmode=disable"
 
 func defaultNewSyncService() (*flow.Service, string, error) {
@@ -35,7 +37,12 @@ func defaultNewSyncService() (*flow.Service, string, error) {
 		return nil, "", fmt.Errorf("create position repository: %w", err)
 	}
 
-	return flow.NewService(jumpit.NewProvider(nil), positionRepository), databaseURL, nil
+	service, err := flow.NewService(jumpit.NewProvider(nil), positionRepository)
+	if err != nil {
+		return nil, "", fmt.Errorf("create flow service: %w", err)
+	}
+
+	return service, databaseURL, nil
 }
 
 //nolint:gochecknoglobals

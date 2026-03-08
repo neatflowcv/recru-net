@@ -18,22 +18,25 @@ type Service struct {
 	positionRepository domain.PositionRepository
 }
 
-func NewService(positionProvider domain.PositionProvider, positionRepository domain.PositionRepository) *Service {
-	return &Service{
-		positionProvider:   positionProvider,
-		positionRepository: positionRepository,
-	}
-}
-
-func (s *Service) Sync(ctx context.Context) ([]*domain.Position, error) {
-	if s.positionProvider == nil {
+func NewService(
+	positionProvider domain.PositionProvider,
+	positionRepository domain.PositionRepository,
+) (*Service, error) {
+	if positionProvider == nil {
 		return nil, errPositionProviderNil
 	}
 
-	if s.positionRepository == nil {
+	if positionRepository == nil {
 		return nil, errPositionRepositoryNil
 	}
 
+	return &Service{
+		positionProvider:   positionProvider,
+		positionRepository: positionRepository,
+	}, nil
+}
+
+func (s *Service) Sync(ctx context.Context) ([]*domain.Position, error) {
 	positions, err := s.positionProvider.ListPositions(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list positions: %w", err)

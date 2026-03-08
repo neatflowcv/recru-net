@@ -4,6 +4,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/neatflowcv/recru-net/internal/app/flow"
@@ -15,13 +16,18 @@ import (
 func TestRunSync(t *testing.T) {
 	// Arrange
 	newSyncService = func() (*flow.Service, string, error) {
-		return flow.NewService(stubPositionProvider{
+		service, err := flow.NewService(stubPositionProvider{
 			positions: []*domain.Position{
 				{Title: "Platform Engineer"},
 				{Title: "Backend Engineer"},
 			},
 			err: nil,
-		}, stubPositionRepository{err: nil}), defaultDatabaseURL, nil
+		}, stubPositionRepository{err: nil})
+		if err != nil {
+			return nil, "", fmt.Errorf("create flow service: %w", err)
+		}
+
+		return service, defaultDatabaseURL, nil
 	}
 
 	t.Cleanup(func() {

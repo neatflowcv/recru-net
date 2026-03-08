@@ -15,27 +15,25 @@ var errWriteFailed = errors.New("write failed")
 func TestServiceSyncRequiresProvider(t *testing.T) {
 	t.Parallel()
 
-	service := NewService(nil, &stubPositionRepository{
+	service, err := NewService(nil, &stubPositionRepository{
 		positions: nil,
 		err:       nil,
 	})
 
-	_, err := service.Sync(context.Background())
-
 	require.EqualError(t, err, "position provider is nil")
+	require.Nil(t, service)
 }
 
 func TestServiceSyncRequiresRepository(t *testing.T) {
 	t.Parallel()
 
-	service := NewService(stubPositionProvider{
+	service, err := NewService(stubPositionProvider{
 		positions: nil,
 		err:       nil,
 	}, nil)
 
-	_, err := service.Sync(context.Background())
-
 	require.EqualError(t, err, "position repository is nil")
+	require.Nil(t, service)
 }
 
 func TestServiceSyncUpsertsPositions(t *testing.T) {
@@ -52,10 +50,10 @@ func TestServiceSyncUpsertsPositions(t *testing.T) {
 		positions: nil,
 		err:       nil,
 	}
-	service := NewService(provider, repository)
+	service, err := NewService(provider, repository)
 
+	require.NoError(t, err)
 	positions, err := service.Sync(context.Background())
-
 	require.NoError(t, err)
 	require.Len(t, positions, 2)
 	require.Equal(t, positions, repository.positions)
@@ -68,13 +66,13 @@ func TestServiceSyncReturnsRepositoryError(t *testing.T) {
 		positions: nil,
 		err:       errWriteFailed,
 	}
-	service := NewService(stubPositionProvider{
+	service, err := NewService(stubPositionProvider{
 		positions: nil,
 		err:       nil,
 	}, &repository)
 
-	_, err := service.Sync(context.Background())
-
+	require.NoError(t, err)
+	_, err = service.Sync(context.Background())
 	require.EqualError(t, err, "upsert positions: write failed")
 }
 
